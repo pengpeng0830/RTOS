@@ -1,7 +1,6 @@
-***********************************************************/  
 #include <stdio.h>
 
-#define  PT_START  uint16 u16lc = 0; switch(u16lc){   case 0: u16lc = 0
+#define  PT_START  static uint16 u16lc = 0; switch(u16lc){   case 0: u16lc = 0
 #define  PT_END    }; u16lc = 0 
 #define  WaitX(u8id,s32timer)  settimer(&u16lc,__LINE__,u8id,s32timer); return ; case __LINE__:
 #define  MAXTASKS 5
