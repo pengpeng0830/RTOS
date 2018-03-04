@@ -1,30 +1,35 @@
 #include "os.h"
 
-#define NVIC_INT_CTRL   0xE000ED04
-#define NVIC_SYSPRI14   0xE000ED22
-#define NVIC_PENDSV_PRI 0xFF
-#define NVIC_PENDSVSET  0x10000000
+tTask *pTCurrentTask;
+tTask *pTNextTask;
+tTask *pTTaskTable[2];
 
-#define MEM32(addr)   *(volatile unsigned long *)(addr)
-#define MEM8(addr)    *(volatile unsigned char *)(addr)
-
-unsigned char flag;
+unsigned char Task1Flag,Task2Flag;
 
 void tTaskInit (tTask *task, void (*entry)(void *), void *parm, tTaskStack *stack)
 {
+    *(--stack) = (unsigned long)(1 << 24);
+    *(--stack) = (unsigned long)entry;
+    *(--stack) = (unsigned long)0x14141414;
+    *(--stack) = (unsigned long)0x12121212;
+    *(--stack) = (unsigned long)0x03030303;
+    *(--stack) = (unsigned long)0x02020202;
+    *(--stack) = (unsigned long)0x01010101;
+    *(--stack) = (unsigned long)parm;
+
+    *(--stack) = (unsigned long)0x11111111;
+    *(--stack) = (unsigned long)0x10101010;
+    *(--stack) = (unsigned long)0x09090909;
+    *(--stack) = (unsigned long)0x08080808;
+    *(--stack) = (unsigned long)0x07070707;
+    *(--stack) = (unsigned long)0x06060606;
+    *(--stack) = (unsigned long)0x05050505;
+    *(--stack) = (unsigned long)0x04040404;
+    
     task->stack = stack;
 }
 
-void triggerPendSVC(void)
-{
-    MEM8(NVIC_SYSPRI14)  = NVIC_PENDSV_PRI;
-    MEM32(NVIC_INT_CTRL) = NVIC_PENDSVSET;
-}
 
-typedef struct _T_BLOCK
-{
-    unsigned long *stackPtr;
-}T_BLOCK;
 
 void delay(unsigned int u16Count)
 {
@@ -32,8 +37,6 @@ void delay(unsigned int u16Count)
 }
 
 unsigned long stackBuffer[1024];
-T_BLOCK *blockPtr;
-T_BLOCK block;
 
 tTask tTask1;
 tTask tTask2;
@@ -45,6 +48,12 @@ void task1(void *para)
 {
     for (;;)
     {
+        Task1Flag = 0;
+        delay(100);
+        Task1Flag = 1;
+        delay(100);
+
+        taskSched();
     }
 }
 
@@ -52,7 +61,26 @@ void task2(void *para)
 {
     for (;;)
     {
+        Task2Flag = 0;
+        delay(100);
+        Task2Flag = 1;
+        delay(100);
+
+        taskSched();
     }
+}
+
+void taskSched(void)
+{
+    if (pTCurrentTask == pTTaskTable[0])
+    {
+        pTNextTask = pTTaskTable[1];
+    }
+    else
+    {
+        pTNextTask = pTTaskTable[0];
+    }
+    tTaskSwitch();
 }
 
 int main(void)
@@ -60,17 +88,12 @@ int main(void)
     tTaskInit(&tTask1, task1, (void *)0x11111111, &task1Env[1024]);
     tTaskInit(&tTask2, task2, (void *)0x22222222, &task2Env[1024]);
     
-    blockPtr = &block;
+    pTTaskTable[0] = &tTask1;
+    pTTaskTable[1] = &tTask2;
+
+    pTNextTask = pTTaskTable[0];
+    tTaskRunFirst();
     
-    for (;;)
-    {
-        flag = 0;
-        delay(500);
-        flag = 1;
-        delay(500);
-			
-        block.stackPtr = &stackBuffer[1024];
-        triggerPendSVC();
-    }
+    return 0;
 }
 
