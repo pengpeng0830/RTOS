@@ -1,4 +1,5 @@
 #include "os.h"
+#include "ARMCM3.h"
 
 tTask *pTCurrentTask;
 tTask *pTNextTask;
@@ -29,14 +30,25 @@ void tTaskInit (tTask *task, void (*entry)(void *), void *parm, tTaskStack *stac
     task->stack = stack;
 }
 
+void SetSysTick(uint32_t ms)
+{
+    SysTick->LOAD = ms * SystemCoreClock / 1000 - 1;
+    NVIC_SetPriority(SysTick_IRQn, (1 << __NVIC_PRIO_BITS) - 1);
+    SysTick->VAL  = 0;
+    SysTick->CTRL = (SysTick_CTRL_CLKSOURCE_Msk | \
+                     SysTick_CTRL_TICKINT_Msk   | \
+                     SysTick_CTRL_ENABLE_Msk);
+}
 
+void SysTick_Handler()
+{
+    taskSched();
+}
 
 void delay(unsigned int u16Count)
 {
     while(u16Count--);
 }
-
-unsigned long stackBuffer[1024];
 
 tTask tTask1;
 tTask tTask2;
@@ -46,14 +58,13 @@ tTaskStack task2Env[1024];
 
 void task1(void *para)
 {
+    SetSysTick(10);
     for (;;)
     {
         Task1Flag = 0;
         delay(100);
         Task1Flag = 1;
         delay(100);
-
-        taskSched();
     }
 }
 
@@ -65,8 +76,6 @@ void task2(void *para)
         delay(100);
         Task2Flag = 1;
         delay(100);
-
-        taskSched();
     }
 }
 
