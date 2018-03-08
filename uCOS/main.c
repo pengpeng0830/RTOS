@@ -5,7 +5,7 @@ tTask *pTCurrentTask;
 tTask *pTNextTask;
 tTask *pTTaskTable[2];
 
-unsigned char Task1Flag,Task2Flag;
+uint8_t Task1Flag,Task2Flag;
 
 void tTaskInit (tTask *task, void (*entry)(void *), void *parm, tTaskStack *stack)
 {
@@ -42,12 +42,27 @@ void SetSysTick(uint32_t ms)
 
 void SysTick_Handler()
 {
+    uint8_t u8TaskNum;
+    for (u8TaskNum = 0; u8TaskNum < 2; u8TaskNum++)
+    {
+        if (pTTaskTable[u8TaskNum]->delayTicks > 0)
+        {
+            pTTaskTable[u8TaskNum]->delayTicks--;
+        }
+    }
+    
     taskSched();
 }
 
-void delay(unsigned int u16Count)
+void delay(uint16_t u16Count)
 {
     while(u16Count--);
+}
+
+void taskDelay(uint16_t u16Count)
+{
+    pTCurrentTask->delayTicks = u16Count;
+    taskSched();
 }
 
 tTask tTask1;
@@ -56,15 +71,18 @@ tTask tTask2;
 tTaskStack task1Env[1024];
 tTaskStack task2Env[1024];
 
+tTask tTaskIdle;
+tTaskStack taskIdleEnv[1024];
+
 void task1(void *para)
 {
     SetSysTick(10);
     for (;;)
     {
         Task1Flag = 0;
-        delay(100);
+        taskDelay(100);
         Task1Flag = 1;
-        delay(100);
+        taskDelay(100);
     }
 }
 
@@ -73,22 +91,70 @@ void task2(void *para)
     for (;;)
     {
         Task2Flag = 0;
-        delay(100);
+        taskDelay(100);
         Task2Flag = 1;
-        delay(100);
+        taskDelay(100);
+    }
+}
+
+void taskIdle(void *para)
+{
+    for (;;)
+    {
     }
 }
 
 void taskSched(void)
 {
-    if (pTCurrentTask == pTTaskTable[0])
+    if (pTCurrentTask == &tTaskIdle)
     {
-        pTNextTask = pTTaskTable[1];
+        if (0 == pTTaskTable[0]->delayTicks)
+        {
+            pTNextTask = pTTaskTable[0];
+        }
+        else if (0 == pTTaskTable[1]->delayTicks)
+        {
+            pTNextTask = pTTaskTable[1];
+        }
+        else
+        {
+            return;
+        }
     }
     else
     {
-        pTNextTask = pTTaskTable[0];
+        if (pTCurrentTask == pTTaskTable[0])
+        {
+            if (0 == pTTaskTable[1]->delayTicks)
+            {
+                pTNextTask = pTTaskTable[1];
+            }
+            else if (0 != pTCurrentTask->delayTicks)
+            {
+                pTNextTask = &tTaskIdle;
+            }
+            else
+            {
+                return;
+            }
+        }
+        else if (pTCurrentTask == pTTaskTable[1])
+        {
+            if (0 == pTTaskTable[0]->delayTicks)
+            {
+                pTNextTask = pTTaskTable[0];
+            }
+            else if (0 != pTCurrentTask->delayTicks)
+            {
+                pTNextTask = &tTaskIdle;
+            }
+            else
+            {
+                return;
+            }
+        }
     }
+    
     tTaskSwitch();
 }
 
@@ -96,6 +162,7 @@ int main(void)
 {
     tTaskInit(&tTask1, task1, (void *)0x11111111, &task1Env[1024]);
     tTaskInit(&tTask2, task2, (void *)0x22222222, &task2Env[1024]);
+    tTaskInit(&tTaskIdle, taskIdle, (void *)0, &taskIdleEnv[1024]);
     
     pTTaskTable[0] = &tTask1;
     pTTaskTable[1] = &tTask2;
