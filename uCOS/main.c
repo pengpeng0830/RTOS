@@ -7,6 +7,8 @@ tTask *pTTaskTable[2];
 
 uint8_t Task1Flag,Task2Flag;
 
+uint8_t g_u8SchedLockCount;
+
 void tTaskInit (tTask *task, void (*entry)(void *), void *parm, tTaskStack *stack)
 {
     *(--stack) = (unsigned long)(1 << 24);
@@ -38,6 +40,34 @@ void SetSysTick(uint32_t ms)
     SysTick->CTRL = (SysTick_CTRL_CLKSOURCE_Msk | \
                      SysTick_CTRL_TICKINT_Msk   | \
                      SysTick_CTRL_ENABLE_Msk);
+}
+
+void tTaskSchedInit(void)
+{
+    g_u8SchedLockCount = 0;
+}
+
+void tTaskScheDisable(void)
+{
+    uint32_t status = tTaskEnterCritical();
+    if (g_u8SchedLockCount < 255)
+    {
+        g_u8SchedLockCount++;
+    }
+    tTaskExitCritical(status);
+}
+
+void tTaskScheEnable(void)
+{
+    uint32_t status = tTaskEnterCritical();
+    if (g_u8SchedLockCount > 0)
+    {
+        if (--g_u8SchedLockCount == 0)
+        {
+            taskSched();
+        }
+    }
+    tTaskExitCritical(status);
 }
 
 void SysTick_Handler()
@@ -106,6 +136,15 @@ void taskIdle(void *para)
 
 void taskSched(void)
 {
+    uint32_t status = tTaskEnterCritical();
+
+    if (g_u8SchedLockCount > 0)
+    {
+        tTaskExitCritical(status);
+        return;
+    }
+    tTaskExitCritical(status);
+    
     if (pTCurrentTask == &tTaskIdle)
     {
         if (0 == pTTaskTable[0]->delayTicks)
@@ -160,6 +199,7 @@ void taskSched(void)
 
 int main(void)
 {
+    tTaskSchedInit();
     tTaskInit(&tTask1, task1, (void *)0x11111111, &task1Env[1024]);
     tTaskInit(&tTask2, task2, (void *)0x22222222, &task2Env[1024]);
     tTaskInit(&tTaskIdle, taskIdle, (void *)0, &taskIdleEnv[1024]);
