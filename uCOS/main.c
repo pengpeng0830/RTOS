@@ -3,13 +3,13 @@
 
 tTask *pTCurrentTask;
 tTask *pTNextTask;
-tTask *pTTaskTable[2];
+tTask *pTTaskTable[TINYOS_PRO_COUNT];
 
 uint8_t Task1Flag,Task2Flag;
 
 uint8_t g_u8SchedLockCount;
 
-void tTaskInit (tTask *task, void (*entry)(void *), void *parm, tTaskStack *stack)
+void tTaskInit (tTask *task, void (*entry)(void *), void *parm, uint32_t prio, tTaskStack *stack)
 {
     *(--stack) = (unsigned long)(1 << 24);
     *(--stack) = (unsigned long)entry;
@@ -30,6 +30,11 @@ void tTaskInit (tTask *task, void (*entry)(void *), void *parm, tTaskStack *stac
     *(--stack) = (unsigned long)0x04040404;
     
     task->stack = stack;
+    task->delayTicks = 0;
+    task->prio = prio;
+	
+    taskTable[prio] = task;
+    tBitmapSet(&taskPrioBitmap, prio);
 }
 
 void SetSysTick(uint32_t ms)
