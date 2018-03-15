@@ -4,6 +4,7 @@
 tTask *pTCurrentTask;
 tTask *pTNextTask;
 tTask *pTTaskTable[TINYOS_PRO_COUNT];
+tBitmap taskPrioBitmap;
 
 uint8_t Task1Flag,Task2Flag;
 
@@ -37,6 +38,12 @@ void tTaskInit (tTask *task, void (*entry)(void *), void *parm, uint32_t prio, t
     tBitmapSet(&taskPrioBitmap, prio);
 }
 
+tTask *tTaskHighestReady (void)
+{
+	uint32_t highestPrio = tBitmapGetFirstSet(&taskPrioBitmap);
+	return taskTable[highestPrio];
+}
+
 void SetSysTick(uint32_t ms)
 {
     SysTick->LOAD = ms * SystemCoreClock / 1000 - 1;
@@ -50,6 +57,7 @@ void SetSysTick(uint32_t ms)
 void tTaskSchedInit(void)
 {
     g_u8SchedLockCount = 0;
+    tBitmapInit(&taskPrioBitmap);
 }
 
 void tTaskScheDisable(void)
