@@ -86,12 +86,16 @@ void tTaskScheEnable(void)
 void SysTick_Handler()
 {
     uint8_t u8TaskNum;
-    for (u8TaskNum = 0; u8TaskNum < 2; u8TaskNum++)
+    for (u8TaskNum = 0; u8TaskNum < TINYOS_PRO_COUNT; u8TaskNum++)
     {
         if (pTTaskTable[u8TaskNum]->delayTicks > 0)
         {
             pTTaskTable[u8TaskNum]->delayTicks--;
         }
+        else
+	{
+	    tBitmapSet(&taskPrioBitmap, i);
+	}
     }
     
     taskSched();
@@ -105,6 +109,7 @@ void delay(uint16_t u16Count)
 void taskDelay(uint16_t u16Count)
 {
     pTCurrentTask->delayTicks = u16Count;
+    tBitmapClear(&taskPrioBitmap, currentTask->prio);
     taskSched();
 }
 
@@ -213,14 +218,14 @@ void taskSched(void)
 int main(void)
 {
     tTaskSchedInit();
-    tTaskInit(&tTask1, task1, (void *)0x11111111, &task1Env[1024]);
-    tTaskInit(&tTask2, task2, (void *)0x22222222, &task2Env[1024]);
-    tTaskInit(&tTaskIdle, taskIdle, (void *)0, &taskIdleEnv[1024]);
+    tTaskInit(&tTask1, task1, (void *)0x11111111,0, &task1Env[1024]);
+    tTaskInit(&tTask2, task2, (void *)0x22222222,1, &task2Env[1024]);
+    tTaskInit(&tTaskIdle, taskIdle, (void *)0, TINYOS_PRO_COUNT - 1,&taskIdleEnv[1024]);
     
     pTTaskTable[0] = &tTask1;
     pTTaskTable[1] = &tTask2;
 
-    pTNextTask = pTTaskTable[0];
+    pTNextTask = tTaskHighestReady();
     tTaskRunFirst();
     
     return 0;
