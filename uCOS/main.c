@@ -154,6 +154,7 @@ void taskIdle(void *para)
 
 void taskSched(void)
 {
+    tTask * tempTask;
     uint32_t status = tTaskEnterCritical();
 
     if (g_u8SchedLockCount > 0)
@@ -163,56 +164,12 @@ void taskSched(void)
     }
     tTaskExitCritical(status);
     
-    if (pTCurrentTask == &tTaskIdle)
-    {
-        if (0 == pTTaskTable[0]->delayTicks)
-        {
-            pTNextTask = pTTaskTable[0];
-        }
-        else if (0 == pTTaskTable[1]->delayTicks)
-        {
-            pTNextTask = pTTaskTable[1];
-        }
-        else
-        {
-            return;
-        }
-    }
-    else
-    {
-        if (pTCurrentTask == pTTaskTable[0])
-        {
-            if (0 == pTTaskTable[1]->delayTicks)
-            {
-                pTNextTask = pTTaskTable[1];
-            }
-            else if (0 != pTCurrentTask->delayTicks)
-            {
-                pTNextTask = &tTaskIdle;
-            }
-            else
-            {
-                return;
-            }
-        }
-        else if (pTCurrentTask == pTTaskTable[1])
-        {
-            if (0 == pTTaskTable[0]->delayTicks)
-            {
-                pTNextTask = pTTaskTable[0];
-            }
-            else if (0 != pTCurrentTask->delayTicks)
-            {
-                pTNextTask = &tTaskIdle;
-            }
-            else
-            {
-                return;
-            }
-        }
-    }
-    
-    tTaskSwitch();
+   tempTask = tTaskHighestReady();
+   if (tempTask != currentTask)
+   {
+       nextTask = tempTask;
+       tTaskSwitch();
+   }
 }
 
 int main(void)
