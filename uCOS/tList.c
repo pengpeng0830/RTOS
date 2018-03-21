@@ -106,3 +106,37 @@ void tListAddLast (tList * list, tNode * node)
 	list->lastNode = node;
 	list->nodeCount++;
 }
+
+
+tNode * tListRemoveFirst (tList * list)
+{
+	tNode * node = (tNode *)0;
+	
+	if (list->nodeCount != 0)
+	{
+		node = list->firstNode;
+		
+		node->nextNode->preNode = &(list->headNode);
+		list->firstNode = node->nextNode;
+		list->nodeCount--;
+	}
+	return node;
+}
+
+void tListInsertAfter (tList * list, tNode * nodeAfter, tNode * nodeToInsert)
+{
+	nodeToInsert->preNode = nodeAfter;
+	nodeToInsert->nextNode = nodeAfter->nextNode;
+	
+	nodeAfter->nextNode->preNode = nodeToInsert;
+	nodeAfter->nextNode = nodeToInsert;
+	
+	list->nodeCount++;
+}
+
+void tListRemove (tList * list, tNode * node)
+{
+	node->preNode->nextNode = node->nextNode;
+	node->nextNode->preNode = node->preNode;
+	list->nodeCount--;
+}
