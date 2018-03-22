@@ -83,6 +83,25 @@ void tTaskScheEnable(void)
     tTaskExitCritical(status);
 }
 
+
+void tTaskDelayedInit (void)
+{
+	tListInit(&tTaskDelayedList);
+}
+
+void tTimeTaskWait (tTask * task, uint32_t ticks)
+{
+	task->delayTicks = ticks;
+	tListAddLast(&tTaskDelayedList, &(task->delayNode));
+	task->state |= TINYOS_TASK_STATE_DELAYED;
+}
+
+void tTimeTaskWakeUp (tTask * task)
+{
+	tListRemove(&tTaskDelayedList, &(task->delayNode));
+	task->state &= ~TINYOS_TASK_STATE_DELAYED;
+}
+
 void SysTick_Handler()
 {
     uint8_t u8TaskNum;
