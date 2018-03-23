@@ -83,6 +83,17 @@ void tTaskScheEnable(void)
     tTaskExitCritical(status);
 }
 
+void tTaskSchedRdy (tTask * task)
+{
+	taskTable[task->prio] = task;
+	tBitmapSet(&taskPrioBitmap, task->prio);
+}
+
+void tTaskSchedUnRdy (tTask * task)
+{
+	taskTable[task->prio] = (tTask *)0;
+	tBitmapClear(&taskPrioBitmap, task->prio);
+}
 
 void tTaskDelayedInit (void)
 {
@@ -125,11 +136,17 @@ void delay(uint16_t u16Count)
     while(u16Count--);
 }
 
-void taskDelay(uint16_t u16Count)
+void tTaskDelay (uint32_t delay)
 {
-    pTCurrentTask->delayTicks = u16Count;
-    tBitmapClear(&taskPrioBitmap, currentTask->prio);
-    taskSched();
+	uint32_t status = tTaskEnterCritical();
+	
+	tTimeTaskWait(currentTask, delay);
+
+	tTaskSchedUnRdy(currentTask);
+	
+	tTaskExitCritical(status);
+	
+	tTaskSched();
 }
 
 tTask tTask1;
