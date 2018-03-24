@@ -9,6 +9,7 @@ tBitmap taskPrioBitmap;
 uint8_t Task1Flag,Task2Flag;
 
 uint8_t g_u8SchedLockCount;
+tList tTaskDelayedList;
 
 void tTaskInit (tTask *task, void (*entry)(void *), void *parm, uint32_t prio, tTaskStack *stack)
 {
@@ -33,6 +34,9 @@ void tTaskInit (tTask *task, void (*entry)(void *), void *parm, uint32_t prio, t
     task->stack = stack;
     task->delayTicks = 0;
     task->prio = prio;
+	
+    task->state = TINYOS_TASK_STATE_RDY;
+    tNodeInit(&(task->delayNode));
 	
     taskTable[prio] = task;
     tBitmapSet(&taskPrioBitmap, prio);
@@ -115,20 +119,24 @@ void tTimeTaskWakeUp (tTask * task)
 
 void SysTick_Handler()
 {
-    uint8_t u8TaskNum;
-    for (u8TaskNum = 0; u8TaskNum < TINYOS_PRO_COUNT; u8TaskNum++)
-    {
-        if (pTTaskTable[u8TaskNum]->delayTicks > 0)
-        {
-            pTTaskTable[u8TaskNum]->delayTicks--;
-        }
-        else
+	tNode * node;
+	
+	uint32_t status = tTaskEnterCritical();
+	
+	for (node = tTaskDelayedList.headNode.nextNode; node != &(tTaskDelayedList.headNode); node = node->nextNode)
 	{
-	    tBitmapSet(&taskPrioBitmap, i);
+		tTask * task = tNodeParent(node, tTask, delayNode);
+		if (--task->delayTicks == 0)
+		{
+			tTimeTaskWakeUp(task);
+			
+			tTaskSchedRdy(task);
+		}
 	}
-    }
-    
-    taskSched();
+		
+	tTaskExitCritical(status);
+	
+	tTaskSched();
 }
 
 void delay(uint16_t u16Count)
