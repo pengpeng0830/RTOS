@@ -10,7 +10,9 @@ typedef struct _tTask
 {
     tTaskStack *stack;
     uint32_t delayTicks;
+    tNode delayNode;
     uint32_t prio;
+    uint32_t state;
 }tTask;
 
 extern tTask *pTCurrentTask;
