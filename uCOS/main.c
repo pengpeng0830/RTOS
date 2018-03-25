@@ -219,6 +219,8 @@ void taskSched(void)
 int main(void)
 {
     tTaskSchedInit();
+    tTaskDelayedInit();
+	
     tTaskInit(&tTask1, task1, (void *)0x11111111,0, &task1Env[1024]);
     tTaskInit(&tTask2, task2, (void *)0x22222222,1, &task2Env[1024]);
     tTaskInit(&tTaskIdle, taskIdle, (void *)0, TINYOS_PRO_COUNT - 1,&taskIdleEnv[1024]);
