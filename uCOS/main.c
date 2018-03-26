@@ -3,7 +3,7 @@
 
 tTask *pTCurrentTask;
 tTask *pTNextTask;
-tTask *pTTaskTable[TINYOS_PRO_COUNT];
+tList *pTTaskTable[TINYOS_PRO_COUNT];
 tBitmap taskPrioBitmap;
 
 uint8_t Task1Flag,Task2Flag;
@@ -31,21 +31,24 @@ void tTaskInit (tTask *task, void (*entry)(void *), void *parm, uint32_t prio, t
     *(--stack) = (unsigned long)0x05050505;
     *(--stack) = (unsigned long)0x04040404;
     
+    task->slice = TINYOS_SLICE_MAX;
     task->stack = stack;
     task->delayTicks = 0;
     task->prio = prio;
 	
     task->state = TINYOS_TASK_STATE_RDY;
     tNodeInit(&(task->delayNode));
+    tNodeInit(&(task->linkNode));
+    tListAddFirst(&taskTable[prio], &(task->linkNode));
 	
-    taskTable[prio] = task;
     tBitmapSet(&taskPrioBitmap, prio);
 }
 
 tTask *tTaskHighestReady (void)
 {
 	uint32_t highestPrio = tBitmapGetFirstSet(&taskPrioBitmap);
-	return taskTable[highestPrio];
+	tNode * node = tListFirst(&taskTable[highestPrio]);
+	return tNodeParent(node, tTask, linkNode);
 }
 
 void SetSysTick(uint32_t ms)
@@ -60,8 +63,14 @@ void SetSysTick(uint32_t ms)
 
 void tTaskSchedInit(void)
 {
-    g_u8SchedLockCount = 0;
-    tBitmapInit(&taskPrioBitmap);
+	int i;
+	
+	schedLockCount = 0;
+	tBitmapInit(&taskPrioBitmap);
+	for (i = 0; i < TINYOS_PRO_COUNT; i++)
+	{
+		tListInit(&taskTable[i]);
+	}
 }
 
 void tTaskScheDisable(void)
