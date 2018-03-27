@@ -143,9 +143,16 @@ void SysTick_Handler()
 		}
 	}
 		
-	tTaskExitCritical(status);
-	
-	tTaskSched();
+	if (--currentTask->slice == 0)
+	{
+		if (tListCount(&taskTable[currentTask->prio]) > 0)
+		{
+			tListRemoveFirst(&taskTable[currentTask->prio]);
+			tListAddLast(&taskTable[currentTask->prio], &(currentTask->linkNode));
+			
+			currentTask->slice = TINYOS_SLICE_MAX;
+		}
+	}
 }
 
 void delay(uint16_t u16Count)
