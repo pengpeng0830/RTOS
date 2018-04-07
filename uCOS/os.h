@@ -4,6 +4,12 @@
 #include "stdint.h"
 #include "tConfig.h"
 
+#include "tEvent.h"
+
+typedef enum _tError {
+	tErrorNoError = 0,
+}tError;
+
 typedef uint32_t tTaskStack;
 
 typedef struct _tTask
@@ -13,6 +19,10 @@ typedef struct _tTask
     tNode delayNode;
     uint32_t prio;
     uint32_t state;
+    
+    tEvent * waitEvent;
+	void * eventMsg;
+	uint32_t waitEventResult;
 }tTask;
 
 extern tTask *pTCurrentTask;
