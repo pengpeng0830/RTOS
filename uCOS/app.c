@@ -10,18 +10,20 @@ tTaskStack task2Env[1024];
 tTaskStack task3Env[1024];
 tTaskStack task4Env[1024];
 
+tEvent eventWaitTimeout;
+tEvent eventWaitNormal;
+
 int task1Flag;
 void task1Entry (void * param)
-{	
-	tTaskInfo taskInfo;
-	
+{		
 	tSetSysTickPeriod(10);
+	
+	tEventInit(&eventWaitTimeout, tEventTypeUnknow);
 		
 	for (;;)
 	{
-		tTaskGetInfo(currentTask, &taskInfo);
-		
-		tTaskGetInfo(&tTask4, &taskInfo);
+		tEventWait(&eventWaitTimeout, currentTask, (void *)0, 0, 5);
+		tTaskSched();
 		
 		task1Flag = 0;
 		tTaskDelay(1);
@@ -35,6 +37,9 @@ void task2Entry (void * param)
 {	
 	for (;;)
 	{		
+		tEventWait(&eventWaitNormal, currentTask, (void *)0, 0, 0);
+		tTaskSched();
+		
 		task2Flag = 0;
 		tTaskDelay(1);
 		task2Flag = 1;
@@ -45,8 +50,12 @@ void task2Entry (void * param)
 int task3Flag;
 void task3Entry (void * param)
 {
+	tEventInit(&eventWaitNormal, tEventTypeUnknow);
 	for (;;)
 	{		
+		tEventWait(&eventWaitNormal, currentTask, (void *)0, 0, 0);
+		tTaskSched();
+		
 		task3Flag = 0;
 		tTaskDelay(1);
 		task3Flag = 1;
@@ -58,6 +67,9 @@ void task4Entry (void * param)
 {	
 	for (;;)
 	{		
+		tTask * rdyTask = tEventWakeUp(&eventWaitNormal, (void *)0, 0);
+		tTaskSched();
+		
 		task4Flag = 0;
 		tTaskDelay(1);
 		task4Flag = 1;
